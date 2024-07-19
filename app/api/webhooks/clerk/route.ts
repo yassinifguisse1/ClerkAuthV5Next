@@ -1,7 +1,7 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { clerkClient, WebhookEvent } from "@clerk/nextjs/server";
-import { createUser, updateUser } from "@/actions/user.action";
+import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
 
 interface User {
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
         lastName: last_name!,
       };
       if (eventType === "user.created") {
-        const newUser = await createUser(user);
+        const newUser = await createUser(user as typeof newUser );
         if (newUser) {
           await clerkClient.users.updateUserMetadata(id, {
             publicMetadata: {
@@ -111,8 +111,15 @@ export async function POST(req: Request) {
         });
       }
 
-      return NextResponse.json({ message: "User updated", user });
-    } else {
+      return NextResponse.json({ message: "User updated", user : updateUser});
+    } else if (eventType === "user.deleted") {
+      // Assuming `deleteUser` is implemented in user.action.ts
+      await deleteUser(id);
+
+      return NextResponse.json({ message: "User deleted" });
+
+    }
+    else {
       console.log(`Unhandled event type: ${eventType}`);
       return new Response("Unhandled event type", { status: 400 });
     }

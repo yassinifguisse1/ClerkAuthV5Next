@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
-import { error } from "console";
 
 interface User {
   clerkId: string;
@@ -85,7 +84,9 @@ export async function POST(req: Request) {
         lastName: last_name || "",
       };
       if (eventType === "user.created") {
+        // create new user
         const newUser = await createUser(user as typeof newUser );
+        // create metadata
         if (newUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
@@ -93,13 +94,16 @@ export async function POST(req: Request) {
             },
           });
         }
+        // response
         return NextResponse.json({
           message: "New user created",
           user,
         });
       } 
       else if (eventType === "user.updated") {
+        // update the user bu usinf Id
         const updatedUser = await updateUser(id as string, user);
+        // update metadata
         if (updatedUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
@@ -107,18 +111,15 @@ export async function POST(req: Request) {
             },
           });
         }
-        return NextResponse.json({
-          message: "User updated",
-          user,
-        });
+        // response
+        return NextResponse.json({ message: "User updated", user : updateUser});
       }
-      return NextResponse.json({ message: "User updated", user : updateUser});
     } else if (eventType === "user.deleted") {
       // Assuming `deleteUser` is implemented in user.action.ts
-      const deletedUser = await deleteUser(id as string );
+      const deletedUser = await deleteUser(id as string) ;
       console.log(id)
+      // response
       return NextResponse.json({ message: "User delete " , user: deletedUser });
-
     }
     else {
       return new Response(`Unhandled event typeeee ${eventType}` , { status: 400 });
@@ -127,6 +128,5 @@ export async function POST(req: Request) {
     console.error("Error handling event:", error);
     return new Response("Error occured", { status: 500 });
   }
-
   return new Response("", { status: 200 });
 }

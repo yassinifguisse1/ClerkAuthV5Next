@@ -1,30 +1,34 @@
 import { Schema, model, models } from "mongoose";
 
-const UserSchema = new Schema({
-  clerkId: {
-    type: String,
-    required: true,
-    unique: true,
+const UserSchema = new Schema(
+  {
+    clerkId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    username: {
+      type: String,
+      required: true,
+    },
+    photo: {
+      type: String,
+    },
+    firstName: {
+      type: String,
+    },
+    lastName: {
+      type: String,
+    },
   },
-  email: {
-    type: String,
-    required: true,
-  },
-  username: {
-    type: String,
-    required: true,
-  },
-  photo: {
-    type: String,
-    required: true,
-  },
-  firstName: {
-    type: String,
-  },
-  lastName: {
-    type: String,
-  },
-});
+  {
+    timestamps: true, // Automatically add createdAt and updatedAt fields
+  }
+);
 
 const User = models?.User || model("User", UserSchema);
 

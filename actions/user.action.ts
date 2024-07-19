@@ -1,23 +1,14 @@
 "use server";
 import User from "@/modals/user.modal";
 import { connect } from "@/db";
-interface User {
-  clerkId: string;
-  email: string;
-  username: string;
-  photo: string;
+interface UserUpdateData {
+  email?: string;
+  username?: string;
+  photo?: string;
   firstName?: string;
   lastName?: string;
 }
-interface UserDataType {
-  clerkId: string;
-  email: string;
-  username: string;
-  photo: string;
-  firstName: string;
-  lastName: string;
-}
-export async function createUser(user: User) {
+export async function createUser(user: typeof User) {
   try {
     await connect();
     const newUser = await User.create(user);
@@ -28,7 +19,7 @@ export async function createUser(user: User) {
 }
 
 
-export async function updateUser(clerkId: string, userData: User) {
+export async function updateUser(clerkId: string, userData: UserUpdateData) {
   try {
     await connect();
     const updatedUser = await User.findOneAndUpdate({ clerkId }, userData, {
@@ -43,5 +34,23 @@ export async function updateUser(clerkId: string, userData: User) {
   } catch (error) {
     console.error(error);
     throw new Error("Error updating user");
+  }
+}
+
+export async function deleteUser(clerkId: string) {
+  try {
+    await connect(); // Ensure the database connection is established
+
+    // Find and delete the user
+    const deletedUser = await User.findOneAndDelete({ clerkId });
+
+    if (!deletedUser) {
+      throw new Error(`User with clerkId ${clerkId} not found`);
+    }
+
+    return { message: `User with clerkId ${clerkId} deleted` };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw new Error("Error deleting user");
   }
 }

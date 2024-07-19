@@ -1,9 +1,8 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
+import { clerkClient, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
-import { EventTypeApi } from "svix/dist/openapi";
 
 interface User {
   clerkId: string;

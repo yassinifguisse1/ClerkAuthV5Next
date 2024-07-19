@@ -40,16 +40,16 @@ export async function updateUser(clerkId: string, userData: UserUpdateData) {
 export async function deleteUser(clerkId: string) {
   try {
     await connect(); // Ensure the database connection is established
-
+    if (!clerkId) {
+      throw new Error("Invalid clerkId provided");
+    }
     // Find and delete the user
     const deletedUser = await User.findByIdAndDelete({ clerkId });
 
     if (!deletedUser) {
       throw new Error(`User with clerkId ${clerkId} not found`);
     }
-    if (deletedUser.deletedCount === 0) {
-      throw new Error(`User with clerkId ${clerkId} not found`);
-    }
+    
 
     return { message: `User with clerkId ${clerkId} deleted` };
   } catch (error) {

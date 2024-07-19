@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { clerkClient, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
+import { error } from "console";
 
 interface User {
   clerkId: string;
@@ -115,13 +116,15 @@ export async function POST(req: Request) {
     } else if (eventType === "user.deleted") {
       // Assuming `deleteUser` is implemented in user.action.ts
       const userdalate = await deleteUser(id as string);
+      // delete metedata
+      await clerkClient.users.deleteUser(id as string);
 
+    
       return NextResponse.json({ message: "User deleted" , userdalate});
 
     }
     else {
-      console.log(`Unhandled event type: ${eventType}`);
-      return new Response("Unhandled event type", { status: 400 });
+      return new Response("Unhandled event type" , { status: 400 });
     }
   } catch (error) {
     console.error("Error handling event:", error);

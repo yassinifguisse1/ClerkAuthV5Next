@@ -1,8 +1,18 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { clerkClient, WebhookEvent } from "@clerk/nextjs/server";
-import { createUser } from "@/actions/user.action";
+import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
+import { createUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
+import { EventTypeApi } from "svix/dist/openapi";
+
+interface User {
+  clerkId: string;
+  email: string;
+  username: string;
+  photo: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 export async function POST(req: Request) {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the endpoint
@@ -55,35 +65,62 @@ export async function POST(req: Request) {
   const { id } = evt.data;
   const eventType = evt.type;
 
-  if (eventType === "user.created") {
-    const { id, email_addresses, image_url, first_name, last_name, username } =
-      evt.data;
+  try {
+    if (eventType === "user.created" || eventType === "user.updated") {
+      const {
+        id,
+        email_addresses,
+        image_url,
+        first_name,
+        last_name,
+        username,
+      } = evt.data;
 
-    const user = {
-      clerkId: id,
-      email: email_addresses[0].email_address,
-      username: username!,
-      photo: image_url!,
-      firstName: first_name,
-      lastName: last_name,
-    };
+      const user: User = {
+        clerkId: id,
+        email: email_addresses[0].email_address,
+        username: username!,
+        photo: image_url!,
+        firstName: first_name!,
+        lastName: last_name!,
+      };
+      if (eventType === "user.created") {
+        const newUser = await createUser(user);
+        if (newUser) {
+          await clerkClient.users.updateUserMetadata(id, {
+            publicMetadata: {
+              userId: newUser._id,
+            },
+          });
+        }
+        return NextResponse.json({
+          message: "New user created",
+          user: newUser,
+        });
+      } else if (eventType === "user.updated") {
+        const updatedUser = await updateUser(id, user);
+        if (updatedUser) {
+          await clerkClient.users.updateUserMetadata(id, {
+            publicMetadata: {
+              userId: updatedUser._id,
+            },
+          });
+        }
+        return NextResponse.json({
+          message: "User updated",
+          user,
+        });
+      }
 
-    console.log(user);
-
-    const newUser = await createUser(user);
-
-    if (newUser) {
-      await clerkClient.users.updateUserMetadata(id, {
-        publicMetadata: {
-          userId: newUser._id,
-        },
-      });
+      return NextResponse.json({ message: "User updated", user });
+    } else {
+      console.log(`Unhandled event type: ${eventType}`);
+      return new Response("Unhandled event type", { status: 400 });
     }
-
-    return NextResponse.json({ message: "New user created", user: newUser });
+  } catch (error) {
+    console.error("Error handling event:", error);
+    return new Response("Error occured", { status: 500 });
   }
-  console.log(`Webhook with and ID of ${id} and type of ${eventType}`);
-  console.log("Webhook body:", body);
 
-  return new Response("", { status: 200 });
+  // return new Response("", { status: 200 });
 }

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const { userId } = auth();
   const user = await currentUser();
+  console.log('sdsd',user)
 
   if (!userId) {
     return NextResponse.json({ message: "Not Authenticated" }, { status: 401 });

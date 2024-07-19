@@ -95,9 +95,10 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({
           message: "New user created",
-          user: newUser,
+          user,
         });
-      } else if (eventType === "user.updated") {
+      } 
+      else if (eventType === "user.updated") {
         const updatedUser = await updateUser(id as string, user);
         if (updatedUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
@@ -111,16 +112,15 @@ export async function POST(req: Request) {
           user,
         });
       }
-
       return NextResponse.json({ message: "User updated", user : updateUser});
     } else if (eventType === "user.deleted") {
       // Assuming `deleteUser` is implemented in user.action.ts
-      const userdalate = await deleteUser(id as string);
-      return NextResponse.json({ message: "User deleted" , userdalate});
+      const deletedUser = await deleteUser(id as string );
+      console.log(id)
+      return NextResponse.json({ message: "User delete " , user: deletedUser });
 
     }
     else {
-      
       return new Response(`Unhandled event typeeee ${eventType}` , { status: 400 });
     }
   } catch (error) {
@@ -128,5 +128,5 @@ export async function POST(req: Request) {
     return new Response("Error occured", { status: 500 });
   }
 
-  // return new Response("", { status: 200 });
+  return new Response("", { status: 200 });
 }

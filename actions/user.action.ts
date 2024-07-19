@@ -45,10 +45,7 @@ export async function deleteUser(clerkId: string) {
       throw new Error("Invalid clerkId provided");
     }
     // Find and delete the user
-    const deletedUser = await User.findByIdAndDelete(
-      { clerkId }
-      
-    );
+    const deletedUser = await User.findByIdAndDelete({ clerkId });
 
     if (!deletedUser) {
       throw new Error(`User with clerkId ${clerkId} not found`);

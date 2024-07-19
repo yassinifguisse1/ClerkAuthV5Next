@@ -114,9 +114,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "User updated", user : updateUser});
     } else if (eventType === "user.deleted") {
       // Assuming `deleteUser` is implemented in user.action.ts
-      await deleteUser(id as string);
+      const userdalate = await deleteUser(id as string);
 
-      return NextResponse.json({ message: "User deleted" });
+      return NextResponse.json({ message: "User deleted" , userdalate});
 
     }
     else {

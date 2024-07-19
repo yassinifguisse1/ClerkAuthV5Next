@@ -42,7 +42,7 @@ export async function deleteUser(clerkId: string) {
     await connect(); // Ensure the database connection is established
 
     // Find and delete the user
-    const deletedUser = await User.deleteOne({ clerkId });
+    const deletedUser = await User.findByIdAndDelete({ clerkId });
 
     if (!deletedUser) {
       throw new Error(`User with clerkId ${clerkId} not found`);

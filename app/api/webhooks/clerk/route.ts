@@ -1,6 +1,6 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { clerkClient, WebhookEvent } from "@clerk/nextjs/server";
+import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
 import { error } from "console";
@@ -63,10 +63,10 @@ export async function POST(req: Request) {
   // Do something with the payload
   // For this guide, you simply log the payload to the console
   const { id } = evt.data;
-  const eventType = evt.type;
+  const eventType = evt.type as string;
 
   try {
-    if (eventType === "user.created" || eventType === "user.updated") {
+    if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
       const {
         id,
         email_addresses,
@@ -74,20 +74,20 @@ export async function POST(req: Request) {
         first_name,
         last_name,
         username,
-      } = evt.data;
+      } = evt.data as UserJSON;
 
       const user: User = {
-        clerkId: id,
-        email: email_addresses[0].email_address,
-        username: username!,
-        photo: image_url!,
-        firstName: first_name!,
-        lastName: last_name!,
+        clerkId: id as string,
+        email: email_addresses ? email_addresses[0].email_address : "",
+        username: username || "",
+        photo: image_url || "",
+        firstName: first_name || "",
+        lastName: last_name || "",
       };
       if (eventType === "user.created") {
         const newUser = await createUser(user as typeof newUser );
         if (newUser) {
-          await clerkClient.users.updateUserMetadata(id, {
+          await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
               userId: newUser._id,
             },
@@ -98,9 +98,9 @@ export async function POST(req: Request) {
           user: newUser,
         });
       } else if (eventType === "user.updated") {
-        const updatedUser = await updateUser(id, user);
+        const updatedUser = await updateUser(id as string, user);
         if (updatedUser) {
-          await clerkClient.users.updateUserMetadata(id, {
+          await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
               userId: updatedUser._id,
             },
@@ -116,10 +116,6 @@ export async function POST(req: Request) {
     } else if (eventType === "user.deleted") {
       // Assuming `deleteUser` is implemented in user.action.ts
       const userdalate = await deleteUser(id as string);
-      // delete metedata
-      await clerkClient.users.deleteUser(id as string);
-
-    
       return NextResponse.json({ message: "User deleted" , userdalate});
 
     }

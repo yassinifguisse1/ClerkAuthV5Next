@@ -120,7 +120,8 @@ export async function POST(req: Request) {
 
     }
     else {
-      return new Response("Unhandled event type" , { status: 400 });
+      
+      return new Response(`Unhandled event typeeee ${eventType}` , { status: 400 });
     }
   } catch (error) {
     console.error("Error handling event:", error);

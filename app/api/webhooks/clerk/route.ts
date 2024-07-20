@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   const wh = new Webhook(WEBHOOK_SECRET);
 
   let evt: WebhookEvent;
-
+  
   // Verify the payload with the headers
   try {
     evt = wh.verify(body, {
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   // Do something with the payload
   const { id } = evt.data;
   const eventType = evt.type as string;
-
+  await connect();
   // console.log(`Handling event: ${eventType} for user ID: ${id}`);
   // const {
   //   id,
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         username,
       } = evt.data as UserJSON;
 
-      const newUser = {
+      const user: User = {
         clerkId: id as string,
         email: email_addresses ? email_addresses[0].email_address : "",
         username: username || "",
@@ -103,8 +103,15 @@ export async function POST(req: Request) {
         lastName: last_name || "",
       };
 
-      await User.create(newUser);
+      const newUser = await createUser(user as any);
       console.log(`User with ID ${id} created in MongoDB.`);
+      if (newUser) {
+        await clerkClient.users.updateUserMetadata(id as string, {
+          publicMetadata: {
+            userId: newUser._id,
+          },
+        });
+      }
     } else if (eventType === "user.updated") {
       // Handle user update
       const {
@@ -115,7 +122,7 @@ export async function POST(req: Request) {
         username,
       } = evt.data as UserJSON;
 
-      const updatedUser = {
+      const UpdateUser = {
         clerkId: id as string,
         email: email_addresses ? email_addresses[0].email_address : "",
         username: username || "",
@@ -124,17 +131,26 @@ export async function POST(req: Request) {
         lastName: last_name || "",
       };
 
-      await User.findOneAndUpdate(
-        { clerkId: id },
-        updatedUser,
-        { new: true, upsert: true }
-      );
-
+      const updatedUser = await updateUser(id as string, UpdateUser);
+      if (updatedUser) {
+        await clerkClient.users.updateUserMetadata(id as string, {
+          publicMetadata: {
+            userId: updatedUser._id,
+          },
+        });
+      }
       console.log(`User with ID ${id} updated in MongoDB.`);
+      return NextResponse.json({
+        message: "User updated",
+        user: updatedUser,
+      });
     } else if (eventType === "user.deleted") {
       // Handle user deletion
+      await connect();
       await User.findOneAndDelete({ clerkId: id });
       console.log(`User with ID ${id} deleted from MongoDB.`);
+      return NextResponse.json({
+        message: "User deleted"});
     } else {
       console.log(`Unhandled event type: ${eventType}`);
       return NextResponse.json({ message: "Unhandled event type" }, { status: 400 });

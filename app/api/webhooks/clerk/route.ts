@@ -60,33 +60,49 @@ export async function POST(req: Request) {
   }
 
   // Do something with the payload
-  const { id } = evt.data;
+  // const { id } = evt.data;
   const eventType = evt.type as string;
 
-  console.log(`Handling event: ${eventType} for user ID: ${id}`);
+  // console.log(`Handling event: ${eventType} for user ID: ${id}`);
+  const {
+    id,
+    email_addresses,
+    image_url,
+    first_name,
+    last_name,
+    username,
+  } = evt.data as UserJSON;
 
+  const user: User = {
+    clerkId: id as string,
+    email: email_addresses ? email_addresses[0].email_address : "",
+    username: username || "",
+    photo: image_url || "",
+    firstName: first_name || "",
+    lastName: last_name || "",
+  };
   try {
-    if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
-      const {
-        id,
-        email_addresses,
-        image_url,
-        first_name,
-        last_name,
-        username,
-      } = evt.data as UserJSON;
+    // if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
+      // const {
+      //   id,
+      //   email_addresses,
+      //   image_url,
+      //   first_name,
+      //   last_name,
+      //   username,
+      // } = evt.data as UserJSON;
 
-      const user: User = {
-        clerkId: id as string,
-        email: email_addresses ? email_addresses[0].email_address : "",
-        username: username || "",
-        photo: image_url || "",
-        firstName: first_name || "",
-        lastName: last_name || "",
-      };
+      // const user: User = {
+      //   clerkId: id as string,
+      //   email: email_addresses ? email_addresses[0].email_address : "",
+      //   username: username || "",
+      //   photo: image_url || "",
+      //   firstName: first_name || "",
+      //   lastName: last_name || "",
+      // };
 
       if (eventType === "user.created") {
-        const newUser = await createUser(user);
+        const newUser = await createUser(user as any);
         if (newUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
@@ -115,8 +131,7 @@ export async function POST(req: Request) {
         console.log(`Deleting user with ID: ${id}`);
         const deletedUser = await deleteUser(id as string);
         return NextResponse.json({ message: "User deleted", user: deletedUser });
-      }
-    } else {
+      } else {
       console.log(`Unhandled event type: ${eventType}`);
       return new Response("Unhandled event type", { status: 400 });
     }
@@ -125,5 +140,4 @@ export async function POST(req: Request) {
     return new Response("Error occurred", { status: 500 });
   }
 
-  return new Response("", { status: 200 });
 }

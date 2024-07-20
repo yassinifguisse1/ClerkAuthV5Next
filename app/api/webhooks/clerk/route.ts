@@ -62,87 +62,88 @@ export async function POST(req: Request) {
   }
 
   // Do something with the payload
-  // const { id } = evt.data;
+  const { id } = evt.data;
   const eventType = evt.type as string;
 
   // console.log(`Handling event: ${eventType} for user ID: ${id}`);
-  const {
-    id,
-    email_addresses,
-    image_url,
-    first_name,
-    last_name,
-    username,
-  } = evt.data as UserJSON;
+  // const {
+  //   id,
+  //   email_addresses,
+  //   image_url,
+  //   first_name,
+  //   last_name,
+  //   username,
+  // } = evt.data as UserJSON;
 
-  const user: User = {
-    clerkId: id as string,
-    email: email_addresses ? email_addresses[0].email_address : "",
-    username: username || "",
-    photo: image_url || "",
-    firstName: first_name || "",
-    lastName: last_name || "",
-  };
+  // const user: User = {
+  //   clerkId: id as string,
+  //   email: email_addresses ? email_addresses[0].email_address : "",
+  //   username: username || "",
+  //   photo: image_url || "",
+  //   firstName: first_name || "",
+  //   lastName: last_name || "",
+  // };
   try {
-    // if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
-      // const {
-      //   id,
-      //   email_addresses,
-      //   image_url,
-      //   first_name,
-      //   last_name,
-      //   username,
-      // } = evt.data as UserJSON;
+    if (eventType === "user.created") {
+      // Handle user creation
+      const {
+        email_addresses,
+        image_url,
+        first_name,
+        last_name,
+        username,
+      } = evt.data as UserJSON;
 
-      // const user: User = {
-      //   clerkId: id as string,
-      //   email: email_addresses ? email_addresses[0].email_address : "",
-      //   username: username || "",
-      //   photo: image_url || "",
-      //   firstName: first_name || "",
-      //   lastName: last_name || "",
-      // };
+      const newUser = {
+        clerkId: id as string,
+        email: email_addresses ? email_addresses[0].email_address : "",
+        username: username || "",
+        photo: image_url || "",
+        firstName: first_name || "",
+        lastName: last_name || "",
+      };
 
-      if (eventType === "user.created") {
-        const newUser = await createUser(user as any);
-        if (newUser) {
-          await clerkClient.users.updateUserMetadata(id as string, {
-            publicMetadata: {
-              userId: newUser._id,
-            },
-          });
-        }
-        return NextResponse.json({
-          message: "New user created",
-          user: newUser,
-        });
-      } else if (eventType === "user.updated") {
-        const updatedUser = await updateUser(id as string, user);
-        if (updatedUser) {
-          await clerkClient.users.updateUserMetadata(id as string, {
-            publicMetadata: {
-              userId: updatedUser._id,
-            },
-          });
-        }
-        return NextResponse.json({
-          message: "User updated",
-          user: updatedUser,
-        });
-      } else if (eventType === "user.deleted") {
-        // console.log(`Deleting user with ID: ${id}`);
-        const { id } = evt.data;
-        await connect();
-        await User.findOneAndDelete({ clerkId: id });
-        // const deletedUser = await deleteUser(id as string);
-        return NextResponse.json({ message: "User deleted" });
-      } else {
+      await User.create(newUser);
+      console.log(`User with ID ${id} created in MongoDB.`);
+    } else if (eventType === "user.updated") {
+      // Handle user update
+      const {
+        email_addresses,
+        image_url,
+        first_name,
+        last_name,
+        username,
+      } = evt.data as UserJSON;
+
+      const updatedUser = {
+        clerkId: id as string,
+        email: email_addresses ? email_addresses[0].email_address : "",
+        username: username || "",
+        photo: image_url || "",
+        firstName: first_name || "",
+        lastName: last_name || "",
+      };
+
+      await User.findOneAndUpdate(
+        { clerkId: id },
+        updatedUser,
+        { new: true, upsert: true }
+      );
+
+      console.log(`User with ID ${id} updated in MongoDB.`);
+    } else if (eventType === "user.deleted") {
+      // Handle user deletion
+      await User.findOneAndDelete({ clerkId: id });
+      console.log(`User with ID ${id} deleted from MongoDB.`);
+    } else {
       console.log(`Unhandled event type: ${eventType}`);
-      return new Response("Unhandled event type", { status: 400 });
+      return NextResponse.json({ message: "Unhandled event type" }, { status: 400 });
     }
+
+    return NextResponse.json({ message: "Webhook handled successfully" });
   } catch (error) {
     console.error("Error handling event:", error);
-    return new Response("Error occurreds", { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 
 }

@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
+import User from "@/modals/user.modal";
+import { connect } from "@/db";
 
 interface User {
   clerkId: string;
@@ -128,16 +130,19 @@ export async function POST(req: Request) {
           user: updatedUser,
         });
       } else if (eventType === "user.deleted") {
-        console.log(`Deleting user with ID: ${id}`);
-        const deletedUser = await deleteUser(id as string);
-        return NextResponse.json({ message: "User deleted", user: deletedUser });
+        // console.log(`Deleting user with ID: ${id}`);
+        const { id } = evt.data;
+        await connect();
+        await User.findOneAndDelete({ clerkId: id });
+        // const deletedUser = await deleteUser(id as string);
+        return NextResponse.json({ message: "User deleted" });
       } else {
       console.log(`Unhandled event type: ${eventType}`);
       return new Response("Unhandled event type", { status: 400 });
     }
   } catch (error) {
     console.error("Error handling event:", error);
-    return new Response("Error occurred", { status: 500 });
+    return new Response("Error occurreds", { status: 500 });
   }
 
 }

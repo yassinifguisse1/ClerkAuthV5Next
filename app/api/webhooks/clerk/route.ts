@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { clerkClient, UserJSON, WebhookEvent } from "@clerk/nextjs/server";
 import { createUser, deleteUser, updateUser } from "@/actions/user.action";
 import { NextResponse } from "next/server";
-import { connect } from "@/db";
 
 interface User {
   clerkId: string;
@@ -15,6 +14,7 @@ interface User {
 }
 
 export async function POST(req: Request) {
+  // You can find this in the Clerk Dashboard -> Webhooks -> choose the endpoint
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -23,25 +23,29 @@ export async function POST(req: Request) {
     );
   }
 
+  // Get the headers
   const headerPayload = headers();
   const svix_id = headerPayload.get("svix-id");
   const svix_timestamp = headerPayload.get("svix-timestamp");
   const svix_signature = headerPayload.get("svix-signature");
 
+  // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return NextResponse.json(
-      { error: "Error occurred -- no svix headers" },
-      { status: 400 }
-    );
+    return NextResponse.json("Error occured -- no svix headers", {
+      status: 400,
+    });
   }
 
+  // Get the body
   const payload = await req.json();
   const body = JSON.stringify(payload);
 
+  // Create a new Svix instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
 
   let evt: WebhookEvent;
 
+  // Verify the payload with the headers
   try {
     evt = wh.verify(body, {
       "svix-id": svix_id,
@@ -50,17 +54,30 @@ export async function POST(req: Request) {
     }) as WebhookEvent;
   } catch (err) {
     console.error("Error verifying webhook:", err);
-    return NextResponse.json({ error: "Error occurred" }, { status: 400 });
+    return NextResponse.json("Error occured", {
+      status: 400,
+    });
   }
 
+  // Do something with the payload
+  // For this guide, you simply log the payload to the console
   const { id } = evt.data;
   const eventType = evt.type as string;
 
   try {
-    await connect();
-
-    if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
-      const { email_addresses, image_url, first_name, last_name, username } = evt.data as UserJSON;
+    if (
+      eventType === "user.created" ||
+      eventType === "user.updated" ||
+      eventType === "user.deleted"
+    ) {
+      const {
+        id,
+        email_addresses,
+        image_url,
+        first_name,
+        last_name,
+        username,
+      } = evt.data as UserJSON;
 
       const user: User = {
         clerkId: id as string,
@@ -70,9 +87,10 @@ export async function POST(req: Request) {
         firstName: first_name || "",
         lastName: last_name || "",
       };
-
       if (eventType === "user.created") {
-        const newUser = await createUser(user as any);
+        // create new user
+        const newUser = await createUser(user as typeof newUser);
+        // create metadata
         if (newUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
@@ -80,27 +98,50 @@ export async function POST(req: Request) {
             },
           });
         }
-        return NextResponse.json({ message: "New user created", user: newUser });
+        // response
+        return NextResponse.json({
+          message: "New user created",
+          user,
+        });
       } else if (eventType === "user.updated") {
-        const updatedUser = await updateUser(id as string, user);
-        if (updatedUser) {
-          await clerkClient.users.updateUserMetadata(id as string, {
-            publicMetadata: {
-              userId: updatedUser._id,
-            },
-          });
-        }
-        return NextResponse.json({ message: "User updated", user: updatedUser });
-      } else if (eventType === "user.deleted") {
-        await deleteUser(id as string);
-        return NextResponse.json({ message: "User deleted" });
+       try {
+         // update the user bu usinf Id
+         const updatedUser = await updateUser(id as string, user);
+         if (updatedUser) {
+           await clerkClient.users.updateUserMetadata(id as string, {
+             publicMetadata: {
+               userId: updatedUser._id,
+             },
+           });
+         }
+         return NextResponse.json({
+           message: "User updated",
+           user: updateUser,
+         },{status:200});
+       } catch (error) {
+        return NextResponse.json({message: "Error updating user", error}, {status:500});
+      
+       }
       }
+      return NextResponse.json({ message: "User updated", user : updateUser});
+    } else if (eventType === "user.deleted") {
+
+     try {
+       // Assuming `deleteUser` is implemented in user.action.ts
+       const deletedUser = await deleteUser(id as string);
+       return NextResponse.json({ message: "User delete ", user: deletedUser });
+     } catch (error) {
+      return NextResponse.json({message: "Error deleting user", error}, {status:500});
+     }
+     
     } else {
-      console.log(`Unhandled event type: ${eventType}`);
-      return new Response(`Unhandled event type: ${eventType}`, { status: 400 });
+      return new Response(`Unhandled event typeeee ${eventType}`, {
+        status: 400,
+      });
     }
   } catch (error) {
-    console.error("Error handling event:", error);
-    return NextResponse.json({ error: "Error occurred" }, { status: 500 });
+    return NextResponse.json("Error occured", { status: 500 });
   }
+
+  return NextResponse.json("All good", { status: 200 });
 }

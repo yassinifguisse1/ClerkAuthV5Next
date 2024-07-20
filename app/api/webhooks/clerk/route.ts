@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return NextResponse.json("Error occured -- no svix headers", {
+    return new Response("Error occurred -- no svix headers", {
       status: 400,
     });
   }
@@ -54,22 +54,19 @@ export async function POST(req: Request) {
     }) as WebhookEvent;
   } catch (err) {
     console.error("Error verifying webhook:", err);
-    return NextResponse.json("Error occured", {
+    return new Response("Error occurred", {
       status: 400,
     });
   }
 
   // Do something with the payload
-  // For this guide, you simply log the payload to the console
   const { id } = evt.data;
   const eventType = evt.type as string;
 
+  console.log(`Handling event: ${eventType} for user ID: ${id}`);
+
   try {
-    if (
-      eventType === "user.created" ||
-      eventType === "user.updated" ||
-      eventType === "user.deleted"
-    ) {
+    if (eventType === "user.created" || eventType === "user.updated" || eventType === "user.deleted") {
       const {
         id,
         email_addresses,
@@ -87,10 +84,9 @@ export async function POST(req: Request) {
         firstName: first_name || "",
         lastName: last_name || "",
       };
+
       if (eventType === "user.created") {
-        // create new user
-        const newUser = await createUser(user as typeof newUser);
-        // create metadata
+        const newUser = await createUser(user);
         if (newUser) {
           await clerkClient.users.updateUserMetadata(id as string, {
             publicMetadata: {
@@ -98,50 +94,36 @@ export async function POST(req: Request) {
             },
           });
         }
-        // response
         return NextResponse.json({
           message: "New user created",
-          user,
+          user: newUser,
         });
       } else if (eventType === "user.updated") {
-       try {
-         // update the user bu usinf Id
-         const updatedUser = await updateUser(id as string, user);
-         if (updatedUser) {
-           await clerkClient.users.updateUserMetadata(id as string, {
-             publicMetadata: {
-               userId: updatedUser._id,
-             },
-           });
-         }
-         return NextResponse.json({
-           message: "User updated",
-           user: updateUser,
-         },{status:200});
-       } catch (error) {
-        return NextResponse.json({message: "Error updating user", error}, {status:500});
-      
-       }
+        const updatedUser = await updateUser(id as string, user);
+        if (updatedUser) {
+          await clerkClient.users.updateUserMetadata(id as string, {
+            publicMetadata: {
+              userId: updatedUser._id,
+            },
+          });
+        }
+        return NextResponse.json({
+          message: "User updated",
+          user: updatedUser,
+        });
+      } else if (eventType === "user.deleted") {
+        console.log(`Deleting user with ID: ${id}`);
+        const deletedUser = await deleteUser(id as string);
+        return NextResponse.json({ message: "User deleted", user: deletedUser });
       }
-      return NextResponse.json({ message: "User updated", user : updateUser});
-    } else if (eventType === "user.deleted") {
-
-     try {
-       // Assuming `deleteUser` is implemented in user.action.ts
-       const deletedUser = await deleteUser(id as string);
-       return NextResponse.json({ message: "User delete ", user: deletedUser });
-     } catch (error) {
-      return NextResponse.json({message: "Error deleting user", error}, {status:500});
-     }
-     
     } else {
-      return new Response(`Unhandled event typeeee ${eventType}`, {
-        status: 400,
-      });
+      console.log(`Unhandled event type: ${eventType}`);
+      return new Response("Unhandled event type", { status: 400 });
     }
   } catch (error) {
-    return NextResponse.json("Error occured", { status: 500 });
+    console.error("Error handling event:", error);
+    return new Response("Error occurred", { status: 500 });
   }
 
-  return NextResponse.json("All good", { status: 200 });
+  return new Response("", { status: 200 });
 }
